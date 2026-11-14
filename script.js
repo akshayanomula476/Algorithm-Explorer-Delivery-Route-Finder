@@ -1,249 +1,59 @@
-
-// ==========================================
-// 1. BRUTE FORCE ALGORITHM
-// ==========================================
-
-function bruteForce(graph, start, end) {
-
-    let bestPath = null;
-    let minDistance = Infinity;
-
-    function explore(current, path, distance) {
-
-        if (current === end) {
-
-            if (distance < minDistance) {
-                minDistance = distance;
-                bestPath = [...path];
-            }
-
-            return;
-        }
-
-        for (let neighbor of graph[current] || []) {
-
-            if (!path.includes(neighbor.node)) {
-
-                explore(
-                    neighbor.node,
-                    [...path, neighbor.node],
-                    distance + neighbor.distance
-                );
-            }
-        }
-    }
-
-    explore(start, [start], 0);
-
-    if (bestPath === null) return null;
-
-    return {
-        path: bestPath,
-        distance: minDistance
-    };
-}
-
-
-// ==========================================
-// 2. GREEDY ALGORITHM
-// ==========================================
-
-function greedy(graph, start, end) {
-
-    let current = start;
-    let path = [start];
-    let totalDistance = 0;
-
-    let visited = new Set([start]);
-
-    while (current !== end) {
-
-        let neighbors = graph[current] || [];
-
-        let available = neighbors.filter(
-            neighbor => !visited.has(neighbor.node)
-        );
-
-        if (available.length === 0) return null;
-
-        available.sort((a, b) => a.distance - b.distance);
-
-        let next = available[0];
-
-        current = next.node;
-        totalDistance += next.distance;
-
-        path.push(current);
-        visited.add(current);
-    }
-
-    return {
-        path: path,
-        distance: totalDistance
-    };
-}
-
-
-// ==========================================
-// 3. DYNAMIC PROGRAMMING ALGORITHM
-// ==========================================
-
-function dynamicProgramming(graph, start, end) {
-
-    let memo = {};
-    let nextNode = {};
-
-    function findDistance(current, visited) {
-
-        if (current === end) return 0;
-
-        let key = current + "|" + [...visited].sort().join(",");
-
-        if (memo[key] !== undefined) {
-            return memo[key];
-        }
-
-        let minDistance = Infinity;
-        let bestNext = null;
-
-        for (let neighbor of graph[current] || []) {
-
-            if (!visited.has(neighbor.node)) {
-
-                let newVisited = new Set(visited);
-                newVisited.add(neighbor.node);
-
-                let distance = neighbor.distance +
-                    findDistance(neighbor.node, newVisited);
-
-                if (distance < minDistance) {
-
-                    minDistance = distance;
-                    bestNext = neighbor.node;
-                }
-            }
-        }
-
-        memo[key] = minDistance;
-        nextNode[key] = bestNext;
-
-        return minDistance;
-    }
-
-    let visited = new Set([start]);
-
-    let totalDistance = findDistance(start, visited);
-
-    if (totalDistance === Infinity) return null;
-
-    let path = [start];
-    let current = start;
-
-    while (current !== end) {
-
-        let key = current + "|" + [...visited].sort().join(",");
-
-        current = nextNode[key];
-
-        if (!current) return null;
-
-        path.push(current);
-        visited.add(current);
-    }
-
-    return {
-        path: path,
-        distance: totalDistance
-    };
-}
-
-
-// ==========================================
-// 4. BACKTRACKING ALGORITHM
-// ==========================================
-
-function backtracking(graph, start, end) {
-
-    let bestPath = null;
-    let minDistance = Infinity;
-
-    function explore(current, path, distance) {
-
-        if (distance >= minDistance) return;
-
-        if (current === end) {
-
-            minDistance = distance;
-            bestPath = [...path];
-
-            return;
-        }
-
-        for (let neighbor of graph[current] || []) {
-
-            if (!path.includes(neighbor.node)) {
-
-                path.push(neighbor.node);
-
-                explore(
-                    neighbor.node,
-                    path,
-                    distance + neighbor.distance
-                );
-
-                path.pop();
-            }
-        }
-    }
-
-    explore(start, [start], 0);
-
-    if (bestPath === null) return null;
-
-    return {
-        path: bestPath,
-        distance: minDistance
-    };
-}
-
-
-// ==========================================
-// 5. CREATE GRAPH FROM USER INPUT
-// ==========================================
+// ========================================
+// ALGORITHM EXPLORER - DELIVERY ROUTE FINDER
+// ========================================
+
+let latestResults = {};
+
+// ========================================
+// 1. CREATE GRAPH
+// ========================================
 
 function createGraph(roadsInput) {
+    const graph = {};
 
-    let graph = {};
+    const lines = roadsInput.split("\n");
 
-    let roads = roadsInput.trim().split(/\r?\n/);
+    lines.forEach((line, index) => {
+        if (line.trim() === "") {
+            return;
+        }
 
-    for (let road of roads) {
-
-        let parts = road.split(",");
+        const parts = line.split(",").map(item => item.trim());
 
         if (parts.length !== 3) {
-            throw new Error("Invalid road format: " + road);
+            throw new Error(
+                "Invalid road format on line " + (index + 1) +
+                ". Use: A,B,4"
+            );
         }
 
-        let from = parts[0].trim();
-        let to = parts[1].trim();
-        let distance = Number(parts[2].trim());
+        const from = parts[0];
+        const to = parts[1];
+        const distance = Number(parts[2]);
 
-        if (
-            !from ||
-            !to ||
-            from === to ||
-            !Number.isFinite(distance) ||
-            distance <= 0
-        ) {
-            throw new Error("Invalid road: " + road);
+        if (!from || !to) {
+            throw new Error("Location names cannot be empty.");
         }
 
-        if (!graph[from]) graph[from] = [];
-        if (!graph[to]) graph[to] = [];
+        if (from === to) {
+            throw new Error("A road cannot connect a location to itself.");
+        }
 
-        // Add road in both directions
+        if (!Number.isFinite(distance) || distance <= 0) {
+            throw new Error(
+                "Distance must be a positive number on line " + (index + 1)
+            );
+        }
 
+        if (!graph[from]) {
+            graph[from] = [];
+        }
+
+        if (!graph[to]) {
+            graph[to] = [];
+        }
+
+        // Roads are treated as two-way connections.
         graph[from].push({
             node: to,
             distance: distance
@@ -253,265 +63,792 @@ function createGraph(roadsInput) {
             node: from,
             distance: distance
         });
+    });
+
+    if (Object.keys(graph).length === 0) {
+        throw new Error("Please enter at least one road connection.");
     }
 
     return graph;
 }
 
 
-// ==========================================
-// 6. DISPLAY ALGORITHM RESULTS
-// ==========================================
+// ========================================
+// HELPER: COMPARE TWO ROUTES
+// ========================================
 
-function displayResult(name, result, time) {
-
-    let resultsDiv = document.getElementById("results");
-
-    if (result === null) {
-
-        resultsDiv.innerHTML += `
-            <div class="result-card">
-                <h3>${name}</h3>
-                <p>No route found.</p>
-                <p>Execution Time: ${time.toFixed(4)} ms</p>
-            </div>
-        `;
-
-        return;
+function betterRoute(first, second) {
+    if (!first) {
+        return second;
     }
 
-    resultsDiv.innerHTML += `
-        <div class="result-card">
-            <h3>${name}</h3>
+    if (!second) {
+        return first;
+    }
 
-            <p>
-                <strong>Route:</strong>
-                ${result.path.join(" → ")}
-            </p>
-
-            <p>
-                <strong>Total Distance:</strong>
-                ${result.distance}
-            </p>
-
-            <p>
-                <strong>Execution Time:</strong>
-                ${time.toFixed(4)} ms
-            </p>
-        </div>
-    `;
+    return second.distance < first.distance ? second : first;
 }
 
 
-// ==========================================
-// 7. DRAW PERFORMANCE CHART
-// ==========================================
+// ========================================
+// 2. BRUTE FORCE ALGORITHM
+// ========================================
+
+function bruteForce(graph, start, end) {
+    let bestResult = null;
+    let exploredRoutes = 0;
+
+    function search(current, path, distance, visited) {
+
+        // Destination reached
+        if (current === end) {
+            exploredRoutes++;
+
+            const result = {
+                path: [...path],
+                distance: distance
+            };
+
+            bestResult = betterRoute(bestResult, result);
+            return;
+        }
+
+        // Check every unvisited neighboring location
+        for (const neighbor of graph[current]) {
+
+            if (!visited.has(neighbor.node)) {
+
+                visited.add(neighbor.node);
+                path.push(neighbor.node);
+
+                search(
+                    neighbor.node,
+                    path,
+                    distance + neighbor.distance,
+                    visited
+                );
+
+                // Backtracking
+                path.pop();
+                visited.delete(neighbor.node);
+            }
+        }
+    }
+
+    const visited = new Set([start]);
+
+    search(start, [start], 0, visited);
+
+    return {
+        result: bestResult,
+        details: [
+            "Method: Checks all possible simple routes.",
+            "Completed routes: " + exploredRoutes,
+            "Uses recursion and backtracking.",
+            "Selects the route with the minimum distance."
+        ]
+    };
+}
+
+
+// ========================================
+// 3. GREEDY ALGORITHM
+// ========================================
+
+function greedy(graph, start, end) {
+    let current = start;
+
+    let path = [start];
+    let totalDistance = 0;
+
+    const visited = new Set([start]);
+    let steps = 0;
+
+    while (current !== end) {
+
+        // Sort neighbors by smallest distance
+        const neighbors = [...graph[current]].sort(
+            (a, b) => a.distance - b.distance
+        );
+
+        let selected = null;
+
+        // Select the nearest unvisited neighbor
+        for (const neighbor of neighbors) {
+            if (!visited.has(neighbor.node)) {
+                selected = neighbor;
+                break;
+            }
+        }
+
+        // No available next location
+        if (!selected) {
+            return {
+                result: null,
+                details: [
+                    "Method: Selects the smallest available edge.",
+                    "Steps completed: " + steps,
+                    "The algorithm could not reach the destination.",
+                    "Greedy does not guarantee the shortest route."
+                ]
+            };
+        }
+
+        current = selected.node;
+
+        visited.add(current);
+        path.push(current);
+
+        totalDistance += selected.distance;
+        steps++;
+    }
+
+    return {
+        result: {
+            path: path,
+            distance: totalDistance
+        },
+        details: [
+            "Method: Selects the smallest available edge.",
+            "Locations visited: " + path.join(" → "),
+            "Steps completed: " + steps,
+            "Greedy makes a locally best choice at each step."
+        ]
+    };
+}
+
+
+// ========================================
+// 4. DYNAMIC PROGRAMMING ALGORITHM
+// ========================================
+
+function dynamicProgramming(graph, start, end) {
+
+    const memo = new Map();
+    let calculatedStates = 0;
+
+    function solve(current, visited) {
+
+        // Destination reached
+        if (current === end) {
+            return {
+                path: [end],
+                distance: 0
+            };
+        }
+
+        // Create a unique key for the current state
+        const visitedKey = [...visited].sort().join(",");
+
+        const key = current + "|" + visitedKey;
+
+        // Return stored result if already calculated
+        if (memo.has(key)) {
+            return memo.get(key);
+        }
+
+        calculatedStates++;
+
+        let best = null;
+
+        for (const neighbor of graph[current]) {
+
+            if (!visited.has(neighbor.node)) {
+
+                const newVisited = new Set(visited);
+                newVisited.add(neighbor.node);
+
+                const subResult = solve(
+                    neighbor.node,
+                    newVisited
+                );
+
+                if (subResult !== null) {
+
+                    const candidate = {
+                        path: [current, ...subResult.path],
+                        distance: neighbor.distance + subResult.distance
+                    };
+
+                    best = betterRoute(best, candidate);
+                }
+            }
+        }
+
+        // Store the calculated result
+        memo.set(key, best);
+
+        return best;
+    }
+
+    const result = solve(start, new Set([start]));
+
+    return {
+        result: result,
+        details: [
+            "Method: Stores and reuses subproblem results.",
+            "Calculated states: " + calculatedStates,
+            "Memoized states: " + memo.size,
+            "Avoids repeating already calculated states."
+        ]
+    };
+}
+
+
+// ========================================
+// 5. DIVIDE AND CONQUER ALGORITHM
+// ========================================
+
+function divideAndConquer(graph, start, end) {
+
+    let dividedGroups = 0;
+    let exploredChoices = 0;
+
+    function solve(current, path, distance, visited) {
+
+        if (current === end) {
+            return {
+                path: [...path],
+                distance: distance
+            };
+        }
+
+        // Collect all available next choices
+        const choices = graph[current].filter(
+            neighbor => !visited.has(neighbor.node)
+        );
+
+        if (choices.length === 0) {
+            return null;
+        }
+
+        // Divide the choices into two groups
+        function solveGroups(group) {
+
+            if (group.length === 0) {
+                return null;
+            }
+
+            if (group.length === 1) {
+                const neighbor = group[0];
+
+                exploredChoices++;
+
+                const newVisited = new Set(visited);
+                newVisited.add(neighbor.node);
+
+                return solve(
+                    neighbor.node,
+                    [...path, neighbor.node],
+                    distance + neighbor.distance,
+                    newVisited
+                );
+            }
+
+            dividedGroups++;
+
+            const middle = Math.floor(group.length / 2);
+
+            const leftGroup = group.slice(0, middle);
+            const rightGroup = group.slice(middle);
+
+            // Solve both divided groups
+            const leftResult = solveGroups(leftGroup);
+            const rightResult = solveGroups(rightGroup);
+
+            // Compare their results
+            return betterRoute(leftResult, rightResult);
+        }
+
+        return solveGroups(choices);
+    }
+
+    const result = solve(
+        start,
+        [start],
+        0,
+        new Set([start])
+    );
+
+    return {
+        result: result,
+        details: [
+            "Method: Divides available route choices into groups.",
+            "Divided groups: " + dividedGroups,
+            "Explored choices: " + exploredChoices,
+            "Compares the results of both groups."
+        ]
+    };
+}
+
+
+// ========================================
+// 6. DISPLAY INDIVIDUAL RESULT CARDS
+// ========================================
+
+function displayResult(name, output, time, className) {
+
+    const results = document.getElementById("results");
+
+    const card = document.createElement("div");
+    card.className = "result-card " + className;
+
+    const heading = document.createElement("h3");
+    heading.textContent = name;
+    card.appendChild(heading);
+
+    if (output.result) {
+
+        const status = document.createElement("p");
+        status.className = "status-success";
+        status.textContent = "Route Found!";
+        card.appendChild(status);
+
+        const routeBox = document.createElement("div");
+        routeBox.className = "result-info";
+
+        const routeLabel = document.createElement("span");
+        routeLabel.textContent = "Best Route";
+
+        const routeValue = document.createElement("p");
+        routeValue.className = "route-output";
+        routeValue.textContent = output.result.path.join(" → ");
+
+        routeBox.appendChild(routeLabel);
+        routeBox.appendChild(routeValue);
+        card.appendChild(routeBox);
+
+        const distanceBox = document.createElement("div");
+        distanceBox.className = "result-info";
+
+        const distanceLabel = document.createElement("span");
+        distanceLabel.textContent = "Total Distance";
+
+        const distanceValue = document.createElement("p");
+        distanceValue.className = "distance-output";
+        distanceValue.textContent = output.result.distance;
+
+        distanceBox.appendChild(distanceLabel);
+        distanceBox.appendChild(distanceValue);
+        card.appendChild(distanceBox);
+
+    } else {
+
+        const status = document.createElement("p");
+        status.className = "status-failed";
+        status.textContent = "No route found!";
+        card.appendChild(status);
+    }
+
+    // Execution time
+    const timeBox = document.createElement("div");
+    timeBox.className = "result-info";
+
+    const timeLabel = document.createElement("span");
+    timeLabel.textContent = "Execution Time";
+
+    const timeValue = document.createElement("p");
+    timeValue.textContent = time.toFixed(4) + " ms";
+
+    timeBox.appendChild(timeLabel);
+    timeBox.appendChild(timeValue);
+    card.appendChild(timeBox);
+
+    // Algorithm-specific details
+    const detailsBox = document.createElement("div");
+    detailsBox.className = "result-info";
+
+    const detailsHeading = document.createElement("span");
+    detailsHeading.textContent = "Algorithm Details";
+
+    const detailsList = document.createElement("ul");
+    detailsList.className = "result-details";
+
+    output.details.forEach(detail => {
+        const item = document.createElement("li");
+        item.textContent = detail;
+        detailsList.appendChild(item);
+    });
+
+    detailsBox.appendChild(detailsHeading);
+    detailsBox.appendChild(detailsList);
+    card.appendChild(detailsBox);
+
+    results.appendChild(card);
+}
+
+
+// ========================================
+// 7. RUN ALL FOUR ALGORITHMS
+// ========================================
+
+function runAllAlgorithms() {
+
+    const start = document.getElementById("start").value.trim();
+    const end = document.getElementById("end").value.trim();
+    const roads = document.getElementById("roads").value.trim();
+
+    const error = document.getElementById("error");
+    const results = document.getElementById("results");
+
+    error.textContent = "";
+    results.innerHTML = "";
+
+    latestResults = {};
+
+    if (!start || !end || !roads) {
+        error.textContent =
+            "Please enter starting location, destination and road connections.";
+        return;
+    }
+
+    if (start === end) {
+        error.textContent =
+            "Starting location and destination must be different.";
+        return;
+    }
+
+    let graph;
+
+    try {
+        graph = createGraph(roads);
+    } catch (problem) {
+        error.textContent = problem.message;
+        return;
+    }
+
+    if (!graph[start] || !graph[end]) {
+        error.textContent =
+            "Starting location or destination is missing from the road connections.";
+        return;
+    }
+
+    // All algorithms use the same graph and input
+    const algorithms = [
+        {
+            name: "Brute Force",
+            className: "brute-card",
+            run: bruteForce
+        },
+        {
+            name: "Greedy",
+            className: "greedy-card",
+            run: greedy
+        },
+        {
+            name: "Dynamic Programming",
+            className: "dp-card",
+            run: dynamicProgramming
+        },
+        {
+            name: "Divide and Conquer",
+            className: "divide-card",
+            run: divideAndConquer
+        }
+    ];
+
+    const times = [];
+
+    algorithms.forEach(algorithm => {
+
+        const startTime = performance.now();
+
+        const output = algorithm.run(graph, start, end);
+
+        const endTime = performance.now();
+
+        const executionTime = endTime - startTime;
+
+        times.push(executionTime);
+
+        latestResults[algorithm.name] = {
+            result: output.result,
+            details: output.details,
+            time: executionTime
+        };
+
+        displayResult(
+            algorithm.name,
+            output,
+            executionTime,
+            algorithm.className
+        );
+    });
+
+    drawPerformanceChart(times);
+
+    document.getElementById("chartMessage").textContent =
+        "Performance comparison for the four algorithms.";
+}
+
+
+// ========================================
+// 8. SHOW ALGORITHM EXPLANATIONS
+// ========================================
+
+function showAlgorithm(type) {
+
+    const details = document.getElementById("algorithmDetails");
+
+    const explanations = {
+
+        brute: {
+            title: "Brute Force Algorithm",
+            description:
+                "Brute Force checks all possible simple routes between the starting location and destination.",
+            points: [
+                "Explores every possible route.",
+                "Uses recursion and backtracking.",
+                "Compares route distances.",
+                "Returns the shortest route if one exists.",
+                "Can take a long time for large road networks."
+            ]
+        },
+
+        greedy: {
+            title: "Greedy Algorithm",
+            description:
+                "Greedy selects the smallest available road distance at each step.",
+            points: [
+                "Makes a locally best choice.",
+                "Moves to the nearest unvisited location.",
+                "Repeats until it reaches the destination.",
+                "It is usually fast.",
+                "It does not always guarantee the globally shortest route."
+            ]
+        },
+
+        dp: {
+            title: "Dynamic Programming",
+            description:
+                "Dynamic Programming solves smaller subproblems and stores their results to avoid repeated calculations.",
+            points: [
+                "Uses recursion and memoization.",
+                "Stores previously calculated states.",
+                "Reuses stored results.",
+                "Finds the shortest simple route in this implementation.",
+                "Requires more memory for larger problems."
+            ]
+        },
+
+        divide: {
+            title: "Divide and Conquer Algorithm",
+            description:
+                "This implementation divides the available route choices into smaller groups, solves each group recursively and compares their results.",
+            points: [
+                "Divides available choices into two groups.",
+                "Solves each group recursively.",
+                "Compares the results of both groups.",
+                "Combines the best result.",
+                "Can still require exponential work because it explores simple routes."
+            ]
+        }
+    };
+
+    const selected = explanations[type];
+
+    if (!selected) {
+        return;
+    }
+
+    details.innerHTML = "";
+
+    const heading = document.createElement("h3");
+    heading.textContent = selected.title;
+
+    const description = document.createElement("p");
+    description.textContent = selected.description;
+
+    const list = document.createElement("ul");
+
+    selected.points.forEach(point => {
+        const item = document.createElement("li");
+        item.textContent = point;
+        list.appendChild(item);
+    });
+
+    details.appendChild(heading);
+    details.appendChild(description);
+    details.appendChild(list);
+
+    // Show the result for this algorithm if it has been run
+    const names = {
+        brute: "Brute Force",
+        greedy: "Greedy",
+        dp: "Dynamic Programming",
+        divide: "Divide and Conquer"
+    };
+
+    const saved = latestResults[names[type]];
+
+    if (saved) {
+
+        const resultText = document.createElement("p");
+
+        if (saved.result) {
+            resultText.textContent =
+                "Current route: " +
+                saved.result.path.join(" → ") +
+                " | Distance: " +
+                saved.result.distance +
+                " | Time: " +
+                saved.time.toFixed(4) + " ms";
+        } else {
+            resultText.textContent =
+                "Current result: No route found.";
+        }
+
+        details.appendChild(resultText);
+    }
+}
+
+
+// ========================================
+// 9. PERFORMANCE COMPARISON CHART
+// ========================================
 
 function drawPerformanceChart(times) {
 
-    let canvas = document.getElementById("performanceChart");
-    let context = canvas.getContext("2d");
+    const canvas = document.getElementById("performanceChart");
+    const context = canvas.getContext("2d");
 
-    let width = canvas.clientWidth;
-    let height = canvas.clientHeight;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
 
-    let ratio = window.devicePixelRatio || 1;
+    const pixelRatio = window.devicePixelRatio || 1;
 
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
+    canvas.width = width * pixelRatio;
+    canvas.height = height * pixelRatio;
 
-    context.scale(ratio, ratio);
+    context.setTransform(
+        pixelRatio, 0, 0, pixelRatio, 0, 0
+    );
 
     context.clearRect(0, 0, width, height);
 
-    let names = [
+    const names = [
         "Brute Force",
         "Greedy",
         "Dynamic Programming",
-        "Backtracking"
+        "Divide and Conquer"
     ];
 
-    let values = [
-        times.bruteForce,
-        times.greedy,
-        times.dynamicProgramming,
-        times.backtracking
-    ];
+    const paddingLeft = 55;
+    const paddingRight = 20;
+    const paddingTop = 25;
+    const paddingBottom = 65;
 
-    let colors = [
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+
+    const maxTime = Math.max(...times, 0.001);
+    const barWidth = chartWidth / 6;
+
+    // Draw vertical axis
+    context.strokeStyle = "#94a3b8";
+    context.lineWidth = 1;
+
+    context.beginPath();
+    context.moveTo(paddingLeft, paddingTop);
+    context.lineTo(paddingLeft, height - paddingBottom);
+    context.lineTo(width - paddingRight, height - paddingBottom);
+    context.stroke();
+
+    // Draw horizontal grid lines
+    context.font = "11px Arial";
+    context.fillStyle = "#94a3b8";
+
+    for (let i = 0; i <= 4; i++) {
+
+        const y = paddingTop + (chartHeight / 4) * i;
+
+        const value = maxTime * (1 - i / 4);
+
+        context.strokeStyle = "#334155";
+        context.beginPath();
+        context.moveTo(paddingLeft, y);
+        context.lineTo(width - paddingRight, y);
+        context.stroke();
+
+        context.textAlign = "right";
+        context.fillText(value.toFixed(3), paddingLeft - 8, y + 4);
+    }
+
+    const colors = [
         "#f97316",
         "#22c55e",
         "#3b82f6",
         "#a78bfa"
     ];
 
-    let maxValue = Math.max(...values, 0.0001);
+    // Draw bars
+    times.forEach((time, index) => {
 
-    let left = 155;
-    let right = 35;
-    let top = 30;
-    let bottom = 35;
+        const x = paddingLeft +
+            (index * 2 + 0.7) * barWidth;
 
-    let chartWidth = width - left - right;
-    let chartHeight = height - top - bottom;
+        const barHeight = (time / maxTime) * chartHeight;
 
-    let barHeight = 30;
-    let gap = (chartHeight - names.length * barHeight) /
-              (names.length + 1);
-
-    // Chart title
-
-    context.fillStyle = "#ffffff";
-    context.font = "bold 13px Arial";
-    context.fillText("Execution Time (ms)", left, 17);
-
-    names.forEach((name, index) => {
-
-        let y = top + gap + index * (barHeight + gap);
-
-        let barWidth = (values[index] / maxValue) * chartWidth;
-
-        // Algorithm name
-
-        context.fillStyle = "#ffffff";
-        context.font = "12px Arial";
-        context.textAlign = "right";
-
-        context.fillText(name, left - 12, y + 20);
-
-        // Bar
+        const y = height - paddingBottom - barHeight;
 
         context.fillStyle = colors[index];
 
         context.fillRect(
-            left,
+            x,
             y,
-            Math.max(barWidth, 2),
-            barHeight
+            barWidth,
+            Math.max(barHeight, 2)
         );
-
-        // Time value
 
         context.fillStyle = "#ffffff";
-        context.textAlign = "left";
-        context.font = "12px Arial";
-
-        let labelX = Math.min(
-            left + barWidth + 8,
-            width - 65
-        );
+        context.textAlign = "center";
+        context.font = "11px Arial";
 
         context.fillText(
-            values[index].toFixed(4) + " ms",
-            labelX,
-            y + 20
+            time.toFixed(4) + " ms",
+            x + barWidth / 2,
+            Math.max(y - 7, 15)
         );
-    });
 
-    document.getElementById("chartMessage").textContent =
-        "Chart updated using your entered road network.";
+        context.save();
+
+        context.translate(
+            x + barWidth / 2,
+            height - paddingBottom + 15
+        );
+
+        context.rotate(-0.35);
+
+        context.textAlign = "right";
+        context.fillStyle = "#cbd5e1";
+
+        context.fillText(names[index], 0, 0);
+
+        context.restore();
+    });
 }
 
 
-// ==========================================
-// 8. RUN ALL FOUR ALGORITHMS
-// ==========================================
+// ========================================
+// 10. LOAD SAMPLE INPUT
+// ========================================
 
-function runAllAlgorithms() {
+function loadSample() {
 
-    let start = document.getElementById("start").value.trim();
-    let end = document.getElementById("end").value.trim();
+    document.getElementById("start").value = "A";
 
-    let roadsInput = document.getElementById("roads").value;
+    document.getElementById("end").value = "F";
 
-    let errorDiv = document.getElementById("error");
-    let resultsDiv = document.getElementById("results");
+    document.getElementById("roads").value =
+`A,B,4
+A,C,2
+B,D,5
+C,D,2
+D,F,3
+B,F,10
+C,F,8`;
 
-    errorDiv.textContent = "";
-    resultsDiv.innerHTML = "";
+    document.getElementById("error").textContent = "";
 
-    document.getElementById("chartMessage").textContent =
-        "Waiting for valid route input.";
-
-    if (!start || !end || !roadsInput.trim()) {
-
-        errorDiv.textContent =
-            "Please enter starting location, destination and roads.";
-
-        return;
-    }
-
-    try {
-
-        let graph = createGraph(roadsInput);
-
-        if (!graph[start] || !graph[end]) {
-
-            throw new Error(
-                "Starting location or destination is missing from the roads."
-            );
-        }
-
-        if (start === end) {
-
-            throw new Error(
-                "Starting location and destination must be different."
-            );
-        }
-
-        // Measure Brute Force
-
-        let begin = performance.now();
-        let bruteResult = bruteForce(graph, start, end);
-        let bruteTime = performance.now() - begin;
-
-        // Measure Greedy
-
-        begin = performance.now();
-        let greedyResult = greedy(graph, start, end);
-        let greedyTime = performance.now() - begin;
-
-        // Measure Dynamic Programming
-
-        begin = performance.now();
-        let dpResult = dynamicProgramming(graph, start, end);
-        let dpTime = performance.now() - begin;
-
-        // Measure Backtracking
-
-        begin = performance.now();
-        let backtrackingResult = backtracking(graph, start, end);
-        let backtrackingTime = performance.now() - begin;
-
-        // Display results
-
-        displayResult("1. Brute Force", bruteResult, bruteTime);
-
-        displayResult("2. Greedy", greedyResult, greedyTime);
-
-        displayResult(
-            "3. Dynamic Programming",
-            dpResult,
-            dpTime
-        );
-
-        displayResult(
-            "4. Backtracking",
-            backtrackingResult,
-            backtrackingTime
-        );
-
-        // Draw chart
-
-        drawPerformanceChart({
-            bruteForce: bruteTime,
-            greedy: greedyTime,
-            dynamicProgramming: dpTime,
-            backtracking: backtrackingTime
-        });
-
-    } catch (error) {
-
-        errorDiv.textContent = error.message;
-    }
+    document.getElementById("results").innerHTML = "";
 }
