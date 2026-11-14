@@ -1,233 +1,199 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Algorithm Explorer - Route Finder</title>
+    <title>Algorithm Explorer - Delivery Route Finder</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Navigation -->
     <nav>
         <h2>Algorithm Explorer</h2>
-        <div>
+        <div class="nav-links">
             <a href="#home">Home</a>
             <a href="#problem">Problem</a>
-            <a href="#explorer">Route Explorer</a>
+            <a href="#route-explorer">Route Explorer</a>
+            <a href="#algorithms">Algorithms</a>
             <a href="#comparison">Comparison</a>
             <a href="#performance">Performance</a>
         </div>
     </nav>
 
-    <!-- Home Section -->
-    <section id="home" class="hero">
+    <section class="hero" id="home">
         <h1>Delivery Route Finder</h1>
-
         <p>
-            Explore and compare four different algorithms
-            to find efficient routes between locations.
+            Explore and compare four algorithmic approaches
+            to finding delivery routes.
         </p>
-
-        <a href="#explorer" class="start-btn">
-            Start Exploring
-        </a>
+        <a href="#route-explorer" class="main-button">Explore Routes</a>
     </section>
 
-    <!-- Problem Description -->
-    <section id="problem" class="section">
-
-        <h2>Real-World Problem</h2>
-
+    <section class="section" id="problem">
+        <h2>Problem Statement</h2>
         <p>
-            Delivery services need to find efficient routes
-            between different locations. Multiple roads may
-            connect the locations, and each road has a different
-            distance.
+            Finding the shortest delivery route between two locations
+            is an important real-world problem. Delivery companies
+            need to select suitable routes to reduce travel distance,
+            time and transportation costs.
         </p>
-
         <p>
-            This application compares four algorithms:
-            Brute Force, Greedy, Dynamic Programming and
-            Backtracking to find routes and understand
-            their performance.
+            This project compares Brute Force, Greedy,
+            Dynamic Programming and Divide and Conquer
+            using the same road network.
         </p>
-
-        <h3>Why Is This Problem Important?</h3>
-
-        <p>
-            Efficient route planning helps delivery companies
-            reduce travel distance, save fuel, reduce delivery
-            time and improve customer satisfaction.
-        </p>
-
     </section>
 
-    <!-- Route Explorer -->
-    <section id="explorer" class="section">
-
+    <section class="section" id="route-explorer">
         <h2>Route Explorer</h2>
-
-        <p>
-            Enter your starting point, destination and
-            road connections.
+        <p class="section-description">
+            Enter your locations and road connections.
+            All four algorithms will use the same input.
         </p>
 
-        <div class="input-box">
+        <div class="input-container">
 
-            <label for="start">Starting Location</label>
-            <input type="text" id="start" placeholder="Example: A">
+            <div class="input-group">
+                <label for="start">Starting Location</label>
+                <input
+                    type="text"
+                    id="start"
+                    placeholder="Example: A"
+                >
+            </div>
 
-            <label for="end">Destination</label>
-            <input type="text" id="end" placeholder="Example: F">
+            <div class="input-group">
+                <label for="end">Destination</label>
+                <input
+                    type="text"
+                    id="end"
+                    placeholder="Example: F"
+                >
+            </div>
 
-            <label for="roads">Road Connections</label>
+            <div class="input-group">
+                <label for="roads">Road Connections</label>
+                <textarea
+                    id="roads"
+                    rows="7"
+                    placeholder="A,B,4&#10;A,C,2&#10;B,D,5&#10;C,D,2&#10;D,F,3"
+                ></textarea>
+                <small>
+                    Enter one road per line in this format:
+                    Starting point,Ending point,Distance
+                </small>
+            </div>
 
-            <textarea id="roads" placeholder="Example:
-A,B,4
-A,C,2
-B,D,5
-C,D,2
-D,F,3"></textarea>
-
-            <p class="input-help">
-                Enter each road as: Location, Location, Distance
-            </p>
-
-            <button onclick="runAllAlgorithms()">
+            <button onclick="runAllAlgorithms()" class="find-button">
                 Find Routes
             </button>
 
-            <p id="error"></p>
+            <button onclick="loadSample()" class="sample-button">
+                Load Sample Input
+            </button>
 
+            <p id="error"></p>
         </div>
 
-        <div id="results"></div>
+        <h2 class="output-heading">Individual Algorithm Outputs</h2>
 
+        <div id="results"></div>
     </section>
 
-    <!-- Algorithm Comparison -->
-    <section id="comparison" class="section">
+    <section class="section" id="algorithms">
+        <h2>Algorithm Explanations</h2>
 
+        <div class="algorithm-buttons">
+            <button onclick="showAlgorithm('brute')">
+                Brute Force
+            </button>
+
+            <button onclick="showAlgorithm('greedy')">
+                Greedy
+            </button>
+
+            <button onclick="showAlgorithm('dp')">
+                Dynamic Programming
+            </button>
+
+            <button onclick="showAlgorithm('divide')">
+                Divide and Conquer
+            </button>
+        </div>
+
+        <div id="algorithmDetails">
+            <h3>Select an algorithm</h3>
+            <p>Click any algorithm button to see its explanation.</p>
+        </div>
+    </section>
+
+    <section class="section" id="comparison">
         <h2>Algorithm Comparison</h2>
 
-        <p>
-            Compare the approaches and complexities
-            of the four algorithms.
-        </p>
-
         <div class="table-container">
-
-            <table class="comparison-table">
-
+            <table>
                 <thead>
                     <tr>
                         <th>Algorithm</th>
                         <th>Approach</th>
+                        <th>Optimal Result</th>
                         <th>Time Complexity</th>
-                        <th>Space Complexity</th>
                     </tr>
                 </thead>
 
                 <tbody>
-
                     <tr>
                         <td>Brute Force</td>
                         <td>Checks all possible simple routes</td>
-                        <td>O(V × V!)</td>
-                        <td>O(V)</td>
+                        <td>Yes</td>
+                        <td>Exponential</td>
                     </tr>
 
                     <tr>
                         <td>Greedy</td>
-                        <td>Chooses the smallest available next road</td>
-                        <td>O(E log V)</td>
-                        <td>O(V)</td>
+                        <td>Selects the smallest available edge</td>
+                        <td>Not guaranteed</td>
+                        <td>O(V²)</td>
                     </tr>
 
                     <tr>
                         <td>Dynamic Programming</td>
-                        <td>Stores previously calculated results</td>
+                        <td>Stores and reuses subproblem results</td>
+                        <td>Yes</td>
                         <td>O(V² × 2^V)</td>
-                        <td>O(V × 2^V)</td>
                     </tr>
 
                     <tr>
-                        <td>Backtracking</td>
-                        <td>Explores routes and prunes unpromising paths</td>
-                        <td>O(V × V!)</td>
-                        <td>O(V)</td>
+                        <td>Divide and Conquer</td>
+                        <td>Divides route choices into smaller groups</td>
+                        <td>Yes</td>
+                        <td>Exponential</td>
                     </tr>
-
                 </tbody>
-
             </table>
-
         </div>
-
-        <div class="complexity-note">
-
-            <h3>Understanding Complexity</h3>
-
-            <p><strong>V:</strong> Number of locations (vertices).</p>
-
-            <p><strong>E:</strong> Number of roads (edges).</p>
-
-            <p>
-                <strong>Time Complexity:</strong>
-                Measures how running time grows with input size.
-            </p>
-
-            <p>
-                <strong>Space Complexity:</strong>
-                Measures how much additional memory an algorithm uses.
-            </p>
-
-        </div>
-
     </section>
 
-    <!-- Performance Chart -->
-    <section id="performance" class="section">
-
-        <h2>Performance Analysis</h2>
-
-        <p>
-            This chart compares the actual execution time
-            of the four algorithms for your entered road network.
+    <section class="section" id="performance">
+        <h2>Performance Comparison</h2>
+        <p class="section-description">
+            Compare the execution time of all four algorithms.
         </p>
 
-        <div class="chart-box">
-
-            <h3>Algorithm Execution Time</h3>
-
-            <p class="chart-help">
-                Execution time is measured in milliseconds (ms).
-                Run Find Routes to generate the chart.
-            </p>
-
+        <div class="chart-container">
             <canvas id="performanceChart"></canvas>
-
-            <div id="chartMessage">
-                Enter road connections and click Find Routes
-                to see the performance chart.
-            </div>
-
         </div>
 
+        <p id="chartMessage">
+            Run the algorithms to view the performance chart.
+        </p>
     </section>
 
-    <!-- Footer -->
     <footer>
-        <p>Algorithm Explorer | Individual DAA Project</p>
-
-        <p>
-            Brute Force | Greedy | Dynamic Programming | Backtracking
-        </p>
+        <p>Algorithm Explorer | DAA Project</p>
+        <p>Delivery Route Finder using Four Algorithms</p>
     </footer>
 
     <script src="script.js"></script>
-
 </body>
 </html>
